@@ -1,47 +1,52 @@
 import streamlit as st
-import pickle
+import joblib
 import numpy as np
-import pandas as pd
-import os
 
-st.set_page_config(page_title="Water Usage Prediction")
+# Load trained model
+model = joblib.load("water_usage_model.pkl")
 
-MODEL_FILE = "waterusage_model.pkl"
+# App title
+st.title("💧 Household Water Usage Prediction")
+st.write("Predict daily water consumption based on household conditions")
 
-st.title("💧 Water Usage Prediction App")
+# User inputs
+people = st.number_input(
+    "Number of People in the House",
+    min_value=1,
+    max_value=20,
+    value=4
+)
 
-# Check model file
-if not os.path.exists(MODEL_FILE):
-    st.error("❌ Model file not found. Upload 'waterusage_model.pkl' to the GitHub repo.")
-    st.stop()
+temperature = st.number_input(
+    "Temperature (°C)",
+    min_value=0,
+    max_value=50,
+    value=30
+)
 
-# Load model
-with open(MODEL_FILE, "rb") as file:
-    loaded_obj = pickle.load(file)
+day_type = st.selectbox(
+    "Day Type",
+    ["Weekday", "Weekend"]
+)
 
-# If PKL is dataset (wrong)
-if isinstance(loaded_obj, pd.DataFrame):
-    st.error("❌ PKL file contains a dataset, not a trained ML model.")
-    st.stop()
+tank_level = st.slider(
+    "Current Tank Level (%)",
+    min_value=0,
+    max_value=100,
+    value=50
+)
 
-# If PKL is dictionary
-elif isinstance(loaded_obj, dict):
-    model = loaded_obj.get("model")
-    if model is None:
-        st.error("❌ 'model' key not found in PKL file.")
-        st.stop()
+# Convert categorical input
+day_type_value = 1 if day_type == "Weekend" else 0
 
-# If PKL is a trained model
-else:
-    model = loaded_obj
-
-# Inputs
-members = st.number_input("Number of Family Members", min_value=1)
-water_today = st.number_input("Water Used Today (Liters)", min_value=0.0)
-temperature = st.number_input("Temperature (°C)", min_value=0.0)
-
-# Prediction
-if st.button("Predict Tomorrow's Usage"):
-    input_data = np.array([[members, water_today, temperature]])
+# Prediction button
+if st.button("Predict Water Usage"):
+    input_data = np.array([
+        [people, temperature, day_type_value, tank_level]
+    ])
+    
     prediction = model.predict(input_data)
-    st.success(f"✅ Estimated Water Usage: {prediction[0]:.2f} Liters")
+    
+    st.success(
+        f"💦 Estimated Water Usage: {prediction[0]:.2f} Liters"
+    )
